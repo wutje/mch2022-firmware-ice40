@@ -52,13 +52,16 @@ def trigger_exit(pressed):
 
 def trigger_beep(pressed):
     hist[-1] = pressed
+    carrier = (pressed & radio_enabled)
+    red = carrier
+    blue = False
     #if pressed:
         #sndmixer.freq(synthId, 880)
         #sndmixer.play(True)
         #if not radio_enabled: return
         #31: carrier
         #2: leds, rood blauw
-    wishbone.queue_write(0xFF, 0xFFFFFF, (pressed & radio_enabled)<<31 & freq)
+    wishbone.queue_write(0xFF, 0xFFFFFF, (carrier<<31) | (red<<30) | (blue<<29) | freq)
     #else:
         ##sndmixer.freq(synthId, 0)
         #wishbone.queue_write(0x00, 0x000000, 0x00000000)
