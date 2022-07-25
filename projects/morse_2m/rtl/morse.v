@@ -13,27 +13,24 @@ module top(
   output [7:0] pmod, //PMOD
 );
 
-  wire clk; // Directly use the 12 MHz oscillator, via the PLL config
-
-  // ----------------------------------------------------------
-  //   Simple gray counter blinky
-  // ----------------------------------------------------------
-
-  wire clk_out, pll_locked;
+  wire clk; // 144Mhz / 4 MHz = 36Mhz
+  wire clk_out; // 144Mhz
+  wire pll_locked; // TODO use this! For reset?
 
   reg [25:0] counter;
-  reg [25:0] counter2;
   //reg [7:0] delay;
   reg [0:0] delay;
 
   wire red, green, blue;
 
-  assign {red} = menu;
-  assign {blue} = select;
+  assign {red} = radio_enabled;
+  assign {blue} = led_blue;
+  assign {green} = led_green;
+  wire [23:0] freq = 36000000;
 
   always @(posedge clk) begin
 	  counter <= counter + 1;
-	  if (counter > 360000) begin
+	  if (counter > freq) begin
 		  counter <= 25'b0;
 		  delay[0] <= !delay[0];
 		  //if (!delay) begin
@@ -117,43 +114,22 @@ module top(
 
   reg  [7:0] command;
   reg [31:0] incoming_data;
-  reg [31:0] buttonstate;
+  reg [31:0] cmdword;
 
   always @(posedge clk)
   begin
     if (pw_wstb & pw_wcmd)           command       <= pw_wdata;
     if (pw_wstb)                     incoming_data <= incoming_data << 8 | pw_wdata;
-    //if (pw_end & (command == 8'hF4)) buttonstate   <= incoming_data;
-    if (pw_end ) buttonstate   <= incoming_data;
+    //if (pw_end & (command == 8'hF4)) cmdword   <= incoming_data;
+    if (pw_end ) cmdword   <= incoming_data;
   end
 
-  wire joystick_down  = buttonstate[16];
-  wire joystick_up    = buttonstate[17];
-  wire joystick_left  = buttonstate[18];
-  wire joystick_right = buttonstate[19];
-  wire joystick_press = buttonstate[20];
-  wire home           = buttonstate[21];
-  wire menu           = buttonstate[22];
-  wire select         = buttonstate[23];
+  assign {freq}           = cmdword[23:0];
 
-  wire start          = buttonstate[24];
-  wire accept         = buttonstate[25];
-  wire back           = buttonstate[26];
-
-  /*
-Bits are mapped to the following keys:
- 0 - joystick down
- 1 - joystick up
- 2 - joystick left
- 3 - joystick right
- 4 - joystick press
- 5 - home
- 6 - menu
- 7 - select
- 8 - start
- 9 - accept
-10 - back
-  */
+  // Enable output only if button is pressed
+  wire led_green      = cmdword[29];
+  wire led_blue       = cmdword[30];
+  wire radio_enabled  = cmdword[31];
 
  // Two clock output pll: 
  // the 12mhz input clock
@@ -179,9 +155,7 @@ Bits are mapped to the following keys:
 	  //.DYNAMICDELAY(delay),
   );
 
-  // Enable output only if joystick is pressed
-  wire morse = (joystick_press);
-  assign pmod[7:1] = 5'b0;
+  assign pmod[7:1] = 6'b0;
  
   // Clock the I/O at 144Mhz.
   // This ensure we use the flipflop at the I/O edge
@@ -193,8 +167,8 @@ Bits are mapped to the following keys:
 	  .PACKAGE_PIN   (pmod[0]),
 	  .OUTPUT_CLK    (clk_out),
 	  .OUTPUT_ENABLE (1),
-	  .D_OUT_0       (morse & delay[0]),
-	  .D_OUT_1       (morse & !delay[0])
+	  .D_OUT_0       (radio_enabled & delay[0]),
+	  .D_OUT_1       (radio_enabled & !delay[0])
   );
 
   // ----------------------------------------------------------
