@@ -11,6 +11,7 @@ import time
 #sndmixer.freq(synthId, 880)
 
 shift = 0
+freq = 0
 
 BLACK = display.BLACK
 WHITE = display.WHITE
@@ -44,26 +45,23 @@ def draw_screen():
     display.drawText(10, 60, "[B] to exit()", BLACK, MARKER)
     display.drawText(10, 80, "[DOWN] to send", BLACK, MARKER)
     display.drawText(10, 100, "[SEL] to toggle carrier", BLACK, MARKER)
-    display.drawText(10, 120, f"#bit = {shift}", BLACK, MARKER)
+    display.drawText(10, 120, f"#freq = {freq}", BLACK, MARKER)
 
 def trigger_exit(pressed):
     if pressed: mch22.exit_python()
 
 def trigger_beep(pressed):
-    global refresh_screen
-    global shift
     hist[-1] = pressed
-    if pressed:
+    #if pressed:
         #sndmixer.freq(synthId, 880)
         #sndmixer.play(True)
-        if not radio_enabled: return
-        #wishbone.queue_write(0xFF, 0xFFFFFF, 0xFFFFFFFF)
-        wishbone.queue_write(0xFF, 0xFFFFFF, 1<<shift)
-        shift += 1
-        refresh_screen = True
-    else:
-        #sndmixer.freq(synthId, 0)
-        wishbone.queue_write(0x00, 0x000000, 0x00000000)
+        #if not radio_enabled: return
+        #31: carrier
+        #2: leds, rood blauw
+    wishbone.queue_write(0xFF, 0xFFFFFF, (pressed & radio_enabled)<<31 & freq)
+    #else:
+        ##sndmixer.freq(synthId, 0)
+        #wishbone.queue_write(0x00, 0x000000, 0x00000000)
     wishbone.exec() # execute the command queue
 
 def trigger_fpga(pressed):
@@ -82,6 +80,7 @@ def trigger_toggle_radio(pressed):
 
 def main():
     global refresh_screen
+    global freq
     print_disclaimer()
     buttons.attach(buttons.BTN_START, trigger_fpga)
     buttons.attach(buttons.BTN_B, trigger_exit)
@@ -105,5 +104,9 @@ def main():
             start = now
             hist.pop(0)
             hist.append(hist[-1])
+            trigger_beep(True)
+            freq += 100
+            freq &= 0xFFFFFF
+            refresh_screen = True
 
 main()
