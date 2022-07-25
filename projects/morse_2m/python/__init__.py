@@ -10,6 +10,7 @@ import time
 #sndmixer.volume(synthId, 255)
 #sndmixer.freq(synthId, 880)
 
+shift = 0
 
 BLACK = display.BLACK
 WHITE = display.WHITE
@@ -43,17 +44,23 @@ def draw_screen():
     display.drawText(10, 60, "[B] to exit()", BLACK, MARKER)
     display.drawText(10, 80, "[DOWN] to send", BLACK, MARKER)
     display.drawText(10, 100, "[SEL] to toggle carrier", BLACK, MARKER)
+    display.drawText(10, 120, f"#bit = {shift}", BLACK, MARKER)
 
 def trigger_exit(pressed):
     if pressed: mch22.exit_python()
 
 def trigger_beep(pressed):
+    global refresh_screen
+    global shift
     hist[-1] = pressed
     if pressed:
         #sndmixer.freq(synthId, 880)
         #sndmixer.play(True)
         if not radio_enabled: return
-        wishbone.queue_write(0xFF, 0xFFFFFF, 0xFFFFFFFF)
+        #wishbone.queue_write(0xFF, 0xFFFFFF, 0xFFFFFFFF)
+        wishbone.queue_write(0xFF, 0xFFFFFF, 1<<shift)
+        shift += 1
+        refresh_screen = True
     else:
         #sndmixer.freq(synthId, 0)
         wishbone.queue_write(0x00, 0x000000, 0x00000000)
